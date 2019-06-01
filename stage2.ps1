@@ -12,15 +12,20 @@
 # that will Download automatically the newest Release-Version
 # Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case for the Link generation
 $deps = @(
-    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
-  
+#    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+#    [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+#    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
+     [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
   
    # Preset New Download (Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case)
    # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
    
-    )
+)
+# Command to install the dependencies from pip
+$pip_command="pip install cython numpy pillow pygments pyreadline Jinja2"
+
+# Command to install the dependencies from vcpkg
+$vcpkg_x64_command="vcpkg install dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image --triplet x64-windows"
 
 # Change to preferred download path
 $dependency_dl_path="$env:HOMEDRIVE\openage-deps\";
@@ -61,6 +66,8 @@ Function GenerateDepFolders{
 }
 
 # Function to download dependency setups
+# TODO Do not redownload already installed/downloaded deps
+# TODO Find a way to cache actual version number in a environment variable/text file
 Function DownloadDependencies($arr){
     
      $arr | ForEach-Object {
@@ -70,11 +77,22 @@ Function DownloadDependencies($arr){
 
             Write-Host "Downloading $($_.Name) ..."
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            $job = Invoke-WebRequest $source -Out $output
-  
-            While ($job.JobState -eq "Transferring") {
-                 Sleep -Seconds 3
+            
+            if(($_.Name) -eq "vs_buildtools"){
+
+                 # Visual Studio 17 CE (advanced options) - Build tools
+                 $job = Invoke-WebRequest -Uri $source  -OutFile $output -Headers @{"method"="GET"; "authority"="download.visualstudio.microsoft.com"; "scheme"="https"; "path"="/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; "upgrade-insecure-requests"="1"; "dnt"="1"; "user-agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"; "accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"; "referer"="https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=15"; "accept-encoding"="gzip, deflate, br"; "accept-language"="en-US,en;q=0.9"}
+       
+            }else{
+                 # Other dependencies besides VS-Buildtools
+                 $job = Invoke-WebRequest -Uri $source -OutFile $output
+                                    
             }
+
+            While ($job.JobState -eq "Transferring") {
+                     Sleep -Seconds 3
+            }
+
     }
 
 }
@@ -193,8 +211,12 @@ Function InstallDependencies($arr){
              if ($setup.exitcode -eq 0){
                 write-host "$($_.Name) installed succesfully."
              }
+           }elseif(($_.Name) -eq "vs_buildtools"){
+             $setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "/s -q --norestart --noUpdateInstaller --downloadThenInstall --lang en-US --force --config " -Wait
+             if ($setup.exitcode -eq 0){
+                write-host "$($_.Name) installed succesfully."
+             }
            }
-
          
 
 
@@ -227,7 +249,7 @@ GetLatestVersionLink $deps
 GenerateFileNames $deps
 
 # Download all Dependencies
-#DownloadDependencies $deps
+DownloadDependencies $deps
 
 # Extract Dependencies
 #ExtractDependencies $deps
@@ -238,6 +260,8 @@ GenerateFileNames $deps
 # Python should be in PATH from here
 # -> PIP
 # git and cmake still missing in PATH
+
+
 
 
 # Set Environment variables
@@ -252,14 +276,14 @@ GenerateFileNames $deps
 # Start-BitsTransfer -Source $_.DownloadLink -Destination $_.HomeDir -Asynchronous -DisplayName "Downloading $_.Name ..." 
 
 
-# Installer still do DL
-# Visual Studio 17 CE (advanced options)
+# Version caching in Umgebungsvariable oder ähnlichem
 
+# Installer still do DL
 
 # pip install modules
 
 # Prereq. MSVC17
-# clone vcpkg and build to higher directory (e.g. C:\windows)
+# clone vcpkg and build to higher directory (e.g. C:\)
 # vcpkg integrate, build and install packages
 # 
 
