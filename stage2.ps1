@@ -13,23 +13,32 @@
 # Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case for the Link generation
 $deps = @(
 #    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-#    [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+    [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
 #    [PSCustomObject]@{Name = "flex"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "lexxmark/winflexbison"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
 #    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""; ConfigPath=""}
-    [PSCustomObject]@{Name = "vs_buildtools\config"; LinkName="vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://raw.githubusercontent.com/simonsan/kevin-win-setup/stage2/vsconfig/build_tools.vsconfig"; HashFile = ""; HomeDir = ""; FileName = ""}
+#    [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""; ConfigPath=""}
+#    [PSCustomObject]@{Name = "vs_buildtools\config"; LinkName="vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://raw.githubusercontent.com/simonsan/kevin-win-setup/stage2/vsconfig/build_tools.vsconfig"; HashFile = ""; HomeDir = ""; FileName = ""}
+#    [PSCustomObject]@{Name = "nsis"; LinkName=""; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
   
    # Preset New Download (Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case)
-   # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-   
+   # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""} 
 )
 
+$bin = @(
+        [PSCustomObject]@{Name="cmake"; BinDir=""; BinPath="\bin\cmake.exe"}
+        [PSCustomObject]@{Name="mingit"; BinDir=""; BinPath="\cmd\git.exe"}
+        [PSCustomObject]@{Name="flex"; BinDir=""; BinPath="\win_flex.exe"}
+#        [PSCustomObject]@{Name="pip"; BinDir=""; BinPath=""}
+#        [PSCustomObject]@{Name="python3"; BinDir=""; BinPath=""}
+#        [PSCustomObject]@{Name="vcpkg"; BinDir=""; BinPath=""}
+#        [PSCustomObject]@{Name="cpack"; BinDir=""; BinPath=""\bin\cpack.exe""}
+)
 
 # Command to install the dependencies from pip
-$pip_command="pip install cython numpy pillow pygments pyreadline Jinja2"
+$pip_command="install cython numpy pillow pygments pyreadline Jinja2"
 
 # Command to install the dependencies from vcpkg
-$vcpkg_x64_command="vcpkg install dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image --triplet x64-windows"
+$vcpkg_x64_command="install dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image --triplet x64-windows"
 
 # Change to preferred download path
 $dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
@@ -206,21 +215,45 @@ Function GetLatestVersionLink($arr){
 
 # Extract Zip-Files and delete archives afterwards
 # Sets the HomeDir to the extracted new Folder structure
-Function ExtractDependencies($arr){
+Function ExtractDependencies{
+    Param($arr, [string]$path)
 
     $arr | ForEach-Object {
     
         if(($_.isZip) -eq $true){
             
             Set-Location -Path $_.HomeDir
+          
             $zip = "$($_.HomeDir)$($_.FileName)"
 
-            Write-Host "Extracting $($_.Name) files"
-            Expand-Archive $zip -Force
-            Remove-Item $zip -Force
+            if(!(Test-Path($zip.Substring(0,$zip.Length-4)))){
+                
+                if(($_.Name) -eq "flex"){
+                    $folder = ($zip.Substring(0,$zip.Length-4))
+                    GenerateFolders $folder
+                    $_.HomeDir = $folder
+                                
+                }elseif(($_.Name) -eq "mingit"){
+                    $folder = ($zip.Substring(0,$zip.Length-4))
+                    GenerateFolders $folder
+                    $_.HomeDir = $folder
+                                
+                } 
+                
+                Write-Host "Extracting $($_.Name) files"
+                Expand-Archive -LiteralPath $zip -DestinationPath $_.HomeDir -Force
+               
+                # TODO Archiv muss zum Testen nicht gelöscht werden!
+                # Remove-Item  $zip  -Force
 
-            $_.HomeDir = $zip.Substring(0,$zip.Length-4)
-            
+                $_.HomeDir = $zip.Substring(0,$zip.Length-4)
+            } else {
+                Write-Host "Extracted version is already existing! Continuing without extraction!"
+                $_.HomeDir = $zip.Substring(0,$zip.Length-4)
+            }
+
+            Set-Location -Path $path
+
             # Debug
             # Write-Host $_.HomeDir 
 
@@ -234,8 +267,6 @@ Function ExtractDependencies($arr){
 Function ConnectConfig($arr){
 
    Write-Host "Connecting Configs ..."
-    #$cfg_path = ($arr | Where {$_.isConfig -and $_.LinkName})
-    #$cfg_path = "$($cfg_path.HomeDir)$($cfg_path.FileName)"
     
    $arr | ForEach-Object {
           if(($_.isConfig) -eq $true){
@@ -296,6 +327,37 @@ Function InstallDependencies($arr){
 }
 
 
+# Get direktlink to binary
+Function GetBinaryLinks($arr){
+
+  
+     $arr | ForEach-Object {
+               $name_temp = $_.Name
+               $home_dir_temp = $_.HomeDir  
+                
+               $change = ($bin | Where {$($_.Name) -eq $($name_temp)})  
+             
+               $change.BinDir = $home_dir_temp
+               $change.BinPath = "$($home_dir_temp)$($change.BinPath)"
+
+     }
+
+}
+
+# Git Clone imitating
+Function GitClone([string]$address,[string]$path){
+
+    # Git Binary
+    $git = ($bin | Where {$($_.Name) -eq $("mingit")} | Select BinPath)
+
+    GenerateFolders $path
+    Set-Location -Path $path
+
+    Start-Process -FilePath $git.BinPath -ArgumentList "clone $($address)" -Wait
+
+}
+
+
 
 ## Main
 
@@ -312,19 +374,42 @@ GenerateFileNames $deps
 DownloadDependencies $deps
 
 # Extract Dependencies
-#ExtractDependencies $deps
+ExtractDependencies -arr $deps -path $dependency_dl_path
 
 # Link config files
 ConnectConfig $deps
 
 # Install Dependencies
-InstallDependencies $deps
+#InstallDependencies $deps
+
+# Get Links to Binaries
+GetBinaryLinks $deps
+
+# Get into functions
+
+# vcpkg
+# Write-Host "Please wait, while we are cloning vcpkg"
+# GitClone -address "https://github.com/Microsoft/vcpkg.git" -path $dependency_dl_path
+# Set-Location -Path "$($dependency_dl_path)vcpkg"
+# & .\bootstrap-vcpkg.bat
+
+# Adding to $bin
+# $bin.Add("vcpkg","$($dependency_dl_path)vcpkg","$($dependency_dl_path)vcpkg\vcpkg.exe")
+
+
+# $vcpkg integrate install
+# $vcpkg install XXX
 
 # Python should be in PATH from here
 # -> PIP
 # git and cmake still missing in PATH
 
 
+# Ready
+Write-Host "Here we are ready."
+
+# Cleanup
+# CleanUp $deps
 
 # Notes
 
