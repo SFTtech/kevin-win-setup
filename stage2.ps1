@@ -12,13 +12,13 @@
 # that will Download automatically the newest Release-Version
 # Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case for the Link generation
 $deps = @(
-#    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
     [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-#    [PSCustomObject]@{Name = "flex"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "lexxmark/winflexbison"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-#    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
-#    [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""; ConfigPath=""}
-#    [PSCustomObject]@{Name = "vs_buildtools\config"; LinkName="vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://raw.githubusercontent.com/simonsan/kevin-win-setup/stage2/vsconfig/build_tools.vsconfig"; HashFile = ""; HomeDir = ""; FileName = ""}
-#    [PSCustomObject]@{Name = "nsis"; LinkName=""; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+    [PSCustomObject]@{Name = "flex"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; LatestRelease =""; RepoName = "lexxmark/winflexbison"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
+    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
+    [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""; ConfigPath=""}
+    [PSCustomObject]@{Name = "vs_buildtools\config"; LinkName="vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$true; LatestRelease = ""; RepoName = ""; DownloadLink = "https://raw.githubusercontent.com/simonsan/kevin-win-setup/stage2/vsconfig/build_tools.vsconfig"; HashFile = ""; HomeDir = ""; FileName = ""}
+#   [PSCustomObject]@{Name = "nsis"; LinkName=""; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$false; LatestRelease = ""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
   
    # Preset New Download (Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case)
    # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""} 
@@ -141,7 +141,11 @@ Function GenerateFileNames($arr){
 
 # Get the link for the latest version of a github repo
 # Inspired by https://gist.github.com/f3l3gy/0e89dde158dde024959e36e915abf6bd
-Function GetLatestVersionLink($arr){
+# TODO But also download a hardcoded version 
+Function GetLatestVersionLink{
+	Param($arr, [string] $path)
+
+
     
     Write-Host "Get the latest version of Github-Releases ..."
 
@@ -189,12 +193,13 @@ Function GetLatestVersionLink($arr){
                
                }
 
-               $file="$name$version$arch$type"
+	       #ADD NEW SOFTWARE LINK GENERATION HERE
+               # >>> elseif() <<<
+	       
 
-               #ADD NEW SOFTWARE LINK GENERATION HERE
-               # >>> <<<
-               
-               
+
+               $file="$name$version$arch$type"
+    
                Write-Host "The latest release of $($_.Name) is $($_.LatestRelease)."
 
                # Debug
@@ -244,6 +249,8 @@ Function ExtractDependencies{
                 Expand-Archive -LiteralPath $zip -DestinationPath $_.HomeDir -Force
                
                 # TODO Archiv muss zum Testen nicht gelöscht werden!
+                # TODO Statt Remove-Item in Archiv-Ordner verschieben
+                # > und Version-String speichern
                 # Remove-Item  $zip  -Force
 
                 $_.HomeDir = $zip.Substring(0,$zip.Length-4)
@@ -361,11 +368,15 @@ Function GitClone([string]$address,[string]$path){
 
 ## Main
 
+
+
+
 # Create Directory for dependency downloads
 GenerateDepFolders -arr $deps -path $dependency_dl_path
 
 # Get Latest from Github
-GetLatestVersionLink $deps
+# TODO Take versions from savefile (json)
+GetLatestVersionLink -arr $deps -path ""
 
 # Generate FileNames from Link
 GenerateFileNames $deps
@@ -379,11 +390,13 @@ ExtractDependencies -arr $deps -path $dependency_dl_path
 # Link config files
 ConnectConfig $deps
 
+$deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)versions.json"
+
 # Install Dependencies
 #InstallDependencies $deps
 
 # Get Links to Binaries
-GetBinaryLinks $deps
+#GetBinaryLinks $deps
 
 # Get into functions
 
@@ -391,8 +404,7 @@ GetBinaryLinks $deps
 # Write-Host "Please wait, while we are cloning vcpkg"
 # GitClone -address "https://github.com/Microsoft/vcpkg.git" -path $dependency_dl_path
 # Set-Location -Path "$($dependency_dl_path)vcpkg"
-# & .\bootstrap-vcpkg.bat
-
+# $bat = Start-Process -FilePath $($dependency_dl_path)vcpkg\bootstrap-vcpkg.bat -Wait -passthru -WindowStyle Hidden;$bat.ExitCode
 # Adding to $bin
 # $bin.Add("vcpkg","$($dependency_dl_path)vcpkg","$($dependency_dl_path)vcpkg\vcpkg.exe")
 
@@ -411,7 +423,28 @@ Write-Host "Here we are ready."
 # Cleanup
 # CleanUp $deps
 
+
+
+
+
+
 # Notes
+
+# Menu
+# 1. Auto-Toolchain (Complete)
+# 2. Install from version-file (*.json)
+# 3. Compile openage
+# 4. Pack&Ship openage
+# 5. Cleanup dev environment (Purge)
+# 6. Exit
+
+# --help, -h --> this help
+# --auto-all, -a --> Go through complete toolchain and install/update as needed
+# --config <File-Path.json> -> Version-File for Software
+# --version, -v --> this script version
+# --compile <Path to openage.git> 
+# --output <Path to build-dir> or <dir> regarding your command   
+# --cleanup
 
 
 # Set Environment variables
