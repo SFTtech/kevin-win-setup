@@ -10,6 +10,8 @@
 # Change to preferred download path
 $dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
 
+# Change Build-Directory
+$build_dir="$env:HOMEDRIVE\openage-build\";
 
 # Dependencies to be downloaded
 # GitHub-Files can be referenced with their RepoName and the Flag "isGit"
@@ -279,7 +281,7 @@ Function ExtractDependencies{
 }
 
 # Connect a downloaded config file to a setup
-Function ConnectConfig($arr){
+Function ConnectConfigs($arr){
 
    Write-Host "Connecting Configs ..."
     
@@ -305,7 +307,6 @@ Function ConnectConfig($arr){
 # Install the dependencies
 # TODO Testing
 Function InstallDependencies($arr){
-
 
 
     $arr | ForEach-Object {
@@ -384,7 +385,7 @@ Function GetBinaryLinks($arr){
     
 }
 
-# Git Clone imitating
+# Git imitating
 Function GitBin([string]$address,[string]$action, [string]$path){
 
     # Git Binary
@@ -397,7 +398,7 @@ Function GitBin([string]$address,[string]$action, [string]$path){
 
 }
 
-
+# Vcpkg imitating
 Function VcpkgBin([string]$cmd ="/help",[string]$software="", [string]$arch="--triplet x64-windows"){
 
 # $vcpkg integrate install
@@ -452,7 +453,7 @@ ExtractDependencies -arr $deps -path $dependency_dl_path
 # Link config files
 # TODO This should be called in dependency of existing 
 # config-files not every time
-ConnectConfig $deps
+ConnectConfigs $deps
 
 # Write Versions to file
 # TODO: Export/Import function would be nice to save/restore
@@ -518,9 +519,46 @@ Write-Host "Please wait, while we are compiling vcpkg ..."
 #
 ###
 
+# Clone openage
+#Write-Host "Please wait, while we are cloning openage ..."
+#GitBin -address "https://github.com/SFTtech/openage.git" -action "clone" -path $dependency_dl_path
 
 # Ready
-Write-Host "Here we are ready."
+Write-Host "Here we are ready for cmake configuring and the environment should be set up."
+
+
+# Create build dir
+GenerateFolders $build_dir
+Set-Location $build_dir
+
+# cmake Commands
+# cmake -DCMAKE_TOOLCHAIN_FILE=<vcpkg directory>/scripts/buildsystems/vcpkg.cmake ..
+# cmake --build . --config RelWithDebInfo -- /nologo /m /v:m
+# TODO set cmake flag -G depending on installed MSVC
+# $arch='-G "Visual Studio 15 2017 Win64"'
+
+
+# Install the DejaVu Book Font.
+ # Download and extract the latest dejavu-fonts-ttf tarball/zip file.
+ # Copy ttf/DejaVuSerif*.ttf font files to %WINDIR%/Fonts.
+# Set the FONTCONFIG_PATH environment variable to <vcpkg directory>\installed\<relevant config>\tools\fontconfig\fonts\.
+ # Copy fontconfig/57-dejavu-serif.conf to %FONTCONFIG_PATH%/conf.d.
+# [Optional] Set the AGE2DIR environment variable to the AoE 2 installation directory.
+# Set QML2_IMPORT_PATH to <vcpkg directory>\installed\<relevant config>\qml
+# Append the following to the environment PATH:
+# <openage directory>\build\libopenage\<config built> (for openage.dll)
+# Path to nyan.dll (depends on the procedure chosen to get nyan)
+# <vcpkg directory>\installed\<relevant config>\bin
+# <QT5 directory>\bin (if prebuilt QT5 was installed)
+
+# Open a command prompt at <openage directory>\build (or use the one from the building step):
+
+# Add download NSIS package to $deps
+
+# cpack -C RelWithDebInfo -V
+#The installer (openage-<version>-win32.exe) will be generated in the same directory.
+
+
 
 # Cleanup
 # CleanUp $deps
