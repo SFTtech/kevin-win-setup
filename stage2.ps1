@@ -7,6 +7,10 @@
 # for the current powershell process
 # >>> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 
+# Change to preferred download path
+$dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
+
+
 # Dependencies to be downloaded
 # GitHub-Files can be referenced with their RepoName and the Flag "isGit"
 # that will Download automatically the newest Release-Version
@@ -24,24 +28,27 @@ $deps = @(
    # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""} 
 )
 
+
+# Links to binaries
 $bin = @(
         [PSCustomObject]@{Name="cmake"; BinDir=""; BinPath="\bin\cmake.exe"}
         [PSCustomObject]@{Name="mingit"; BinDir=""; BinPath="\cmd\git.exe"}
         [PSCustomObject]@{Name="flex"; BinDir=""; BinPath="\win_flex.exe"}
 #        [PSCustomObject]@{Name="pip"; BinDir=""; BinPath=""}
 #        [PSCustomObject]@{Name="python3"; BinDir=""; BinPath=""}
-#        [PSCustomObject]@{Name="vcpkg"; BinDir=""; BinPath=""}
+        [PSCustomObject]@{Name="vcpkg"; BinDir="$($dependency_dl_path)vcpkg"; BinPath="$($dependency_dl_path)vcpkg\vcpkg.exe"}
 #        [PSCustomObject]@{Name="cpack"; BinDir=""; BinPath=""\bin\cpack.exe""}
 )
 
+
+
+
 # Command to install the dependencies from pip
-$pip_command="install cython numpy pillow pygments pyreadline Jinja2"
+$pip_modules="cython numpy pillow pygments pyreadline Jinja2"
 
 # Command to install the dependencies from vcpkg
-$vcpkg_x64_command="install dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image --triplet x64-windows"
+$vcpkg_deps="dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image"
 
-# Change to preferred download path
-$dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
 
 
 # Flag for DRY RUN -> TODO
@@ -141,7 +148,8 @@ Function GenerateFileNames($arr){
 
 # Get the link for the latest version of a github repo
 # Inspired by https://gist.github.com/f3l3gy/0e89dde158dde024959e36e915abf6bd
-# TODO But also download a hardcoded version 
+# TODO But also download a hardcoded version
+# TODO $arch should be exchangable from a flag for installing just 32bit versions
 Function GetLatestVersionLink{
 	Param($arr, [string] $path)
 
@@ -323,36 +331,61 @@ Function InstallDependencies($arr){
                 write-host "$($_.Name) installed succesfully."
              }
            }
-         
-
 
          }
-
 
     }
 
 }
 
 
-# Get direktlink to binary
+# Get direktlink to binaries
+# TODO vcpkg
+# python
+# pip
 Function GetBinaryLinks($arr){
 
-  
-     $arr | ForEach-Object {
-               $name_temp = $_.Name
-               $home_dir_temp = $_.HomeDir  
+      # Split env:Path
+      $split_path = $env:Path.Split(";")
+
+
+      #$arr = $bin
+      $arr | ForEach-Object {
                 
-               $change = ($bin | Where {$($_.Name) -eq $($name_temp)})  
-             
-               $change.BinDir = $home_dir_temp
-               $change.BinPath = "$($home_dir_temp)$($change.BinPath)"
+               # search cache
+               $is_in_path=$false;
 
+               $name_temp = $_.Name
+               $lookup = ($deps | Where {$($_.Name) -eq $($name_temp)})  
+               $_.BinDir = $lookup.HomeDir
+               $_.BinPath = "$($lookup.HomeDir)$($_.BinPath)"
+               
+               $executable_dir = "$($_.BinPath.SubString(0,($_.BinPath.LastIndexOf('\') + 1)))"
+               
+               
+
+               
+               # Test for the variable already being there
+               $split_path | ?{$executable_dir -eq $_} | %{ 
+                    
+                    # Debug
+                    Write-Host "$($name_temp) with $($executable_dir) is already there!" 
+                    $is_in_path = $true
+              
+               }
+
+               if(!($is_in_path)){
+                    # Debug
+                    # Write-Host "Write directory $($executable_dir) to path."
+                    Set-Item -path env:Path -value "$($env:Path);$($executable_dir)"
+               }
+    
      }
-
+    
 }
 
 # Git Clone imitating
-Function GitClone([string]$address,[string]$path){
+Function GitBin([string]$address,[string]$action, [string]$path){
 
     # Git Binary
     $git = ($bin | Where {$($_.Name) -eq $("mingit")} | Select BinPath)
@@ -360,7 +393,32 @@ Function GitClone([string]$address,[string]$path){
     GenerateFolders $path
     Set-Location -Path $path
 
-    Start-Process -FilePath $git.BinPath -ArgumentList "clone $($address)" -Wait
+    Start-Process -FilePath $git.BinPath -ArgumentList "$($action) $($address)" -Wait
+
+}
+
+
+Function VcpkgBin([string]$cmd ="/help",[string]$software="", [string]$arch="--triplet x64-windows"){
+
+# $vcpkg integrate install
+# $vcpkg install XXX
+    
+    # vcpkg Binary
+    $vcpkg = ($bin | Where {$($_.Name) -eq $("vcpkg")} | Select BinPath)
+
+    if($($cmd) -eq "integrate install"){
+       
+      # integrate in OS for easier use
+      $job = & Start-Process -FilePath $vcpkg.BinPath -ArgumentList "$($cmd)" -Wait
+
+    
+    }elseif($($cmd) -eq "install"){
+
+      # install Software in $software with Architecture
+      $job = & Start-Process -FilePath $vcpkg.BinPath -ArgumentList "$($cmd) $($arch) $($software)" -Wait
+    }
+
+  
 
 }
 
@@ -382,39 +440,83 @@ GetLatestVersionLink -arr $deps -path ""
 GenerateFileNames $deps
 
 # Download all Dependencies
+# TODO changes to $deps should be done before/after, that we
+# can spare out downloading process by flag
 DownloadDependencies $deps
 
 # Extract Dependencies
+# TODO changes to $deps should be done before/after, that we
+# can spare out extraction process by flag
 ExtractDependencies -arr $deps -path $dependency_dl_path
 
 # Link config files
+# TODO This should be called in dependency of existing 
+# config-files not every time
 ConnectConfig $deps
 
+# Write Versions to file
+# TODO: Export/Import function would be nice to save/restore
+# configs for different versions of a toolchain
+# e.g. stable, testing etc.
 $deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)versions.json"
 
+
 # Install Dependencies
-#InstallDependencies $deps
+# TODO Should test for already installed dependencies first
+# otherwise jump over them
+# InstallDependencies $deps
 
 # Get Links to Binaries
-#GetBinaryLinks $deps
+GetBinaryLinks $bin
 
-# Get into functions
+# Install Python pip modules
+$pip = & Start-Process -FilePath "pip" -ArgumentList "install $($pip_modules)" -Wait
 
-# vcpkg
-# Write-Host "Please wait, while we are cloning vcpkg"
-# GitClone -address "https://github.com/Microsoft/vcpkg.git" -path $dependency_dl_path
+
+### Till here everything works out somewhat nicely
+#
+# Installed: Python 3.7.3, VS build tools
+# Downloaded and extracted: cmake, (min)git, flex 
+# Python should be in PATH from here (from python installer)
+#
+# NEW: cmake, git, flex, vcpkg should be in env:Path
+#
+# NEW: pip modules should be installed
+#
+###
+
+
+# Clone vcpkg
+# TODO Test if vcpkg is already there
+# Fetch newer commits
+# Checkout latest stable
+# Recompile latest stable
+# Do not hardcode vcpkg path in $bin-array/hashtable
+Write-Host "Please wait, while we are cloning vcpkg ..."
+GitBin -address "https://github.com/Microsoft/vcpkg.git" -action "clone" -path $dependency_dl_path
+
 # Set-Location -Path "$($dependency_dl_path)vcpkg"
-# $bat = Start-Process -FilePath $($dependency_dl_path)vcpkg\bootstrap-vcpkg.bat -Wait -passthru -WindowStyle Hidden;$bat.ExitCode
-# Adding to $bin
-# $bin.Add("vcpkg","$($dependency_dl_path)vcpkg","$($dependency_dl_path)vcpkg\vcpkg.exe")
+Write-Host "Please wait, while we are compiling vcpkg ..."
 
+# DEBUG/TODO Do not rebuild everytime
+# $bat = & "$($dependency_dl_path)vcpkg\scripts\bootstrap.ps1"
 
-# $vcpkg integrate install
-# $vcpkg install XXX
+# Integrating vcpkg in OS
+# VcpkgBin -cmd "integrate install"
 
-# Python should be in PATH from here
-# -> PIP
-# git and cmake still missing in PATH
+# Builds 64-bit packages as a standard
+# Add -arch "" to make 32bit packages
+# VcpkgBin -cmd "install" -software $vcpkg_deps
+
+### Till here everything works out somewhat nicely
+# Installed: Python 3.7.3, VS build tools
+# Downloaded and extracted: cmake, (min)git, flex 
+# Python should be in PATH from here (from python installer)
+# cmake, git, flex, vcpkg should be in env:Path
+#
+# NEW: all the Vcpkg-Packages should be built in $arch-Version
+#
+###
 
 
 # Ready
@@ -422,10 +524,6 @@ Write-Host "Here we are ready."
 
 # Cleanup
 # CleanUp $deps
-
-
-
-
 
 
 # Notes
@@ -448,28 +546,18 @@ Write-Host "Here we are ready."
 
 
 # Set Environment variables
-# Install paths
 # VCPKG_DEFAULT_TRIPLET=x64-windows
-# cmake
-# git
-# Python (automatically)
-# PATH: Flex
+## Think we don't want to work with that variable, as we rather want a per command setting not a systemwide setting for vcpkg
+## otherwise we need to remember it for cleanup
+#
 # Buildtools: C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools
+
+# Version caching in Umgebungsvariable oder ähnlichem
+
+# TODO Verification of Software
+# pgp for windows
+# sha256
 
 # Alternative to Invoke-Webrequest
 # Start-BitsTransfer -Source $_.HashFile -Destination $_.HomeDir -Asynchronous
 # Start-BitsTransfer -Source $_.DownloadLink -Destination $_.HomeDir -Asynchronous -DisplayName "Downloading $_.Name ..." 
-
-
-# Version caching in Umgebungsvariable oder ähnlichem
-
-# pip install modules
-
-# Prereq. MSVC17
-# clone vcpkg and build to higher directory (e.g. C:\)
-# vcpkg integrate, build and install packages
-# 
-
-# TODO Verification
-# pgp for windows
-# sha256
