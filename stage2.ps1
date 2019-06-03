@@ -5,7 +5,6 @@
 # Flag for DRY RUN -> TODO
 # $DRY_RUN=false;
 
-
 # IMPORTANT NOTE!
 # Need to set the following command manually, to run this script on a standard Win10 machine
 # don't close the Powershell afterwards because for security reasons scripts are just allowed
@@ -15,7 +14,12 @@
 # PLEASE SEARCH FOR "CHANGEME" IN THIS SCRIPT AND ADJUST THE VALUES TO YOUR LIKING! 
 
 # CHANGEME: IMPORTANT STANDARD PATHS 
-{
+
+## Path to the file with all the dependencies and versions
+## You could also set the $OPENAGE_VF environment variable to the version file you like
+#$version_file=$env:OPENAGE_VF
+$version_file="C:\Users\Jameson\Documents\git-projects\kevin-win-setup\dep-configs\stable.json"
+
 ## Change to preferred download path
 $dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
 
@@ -30,10 +34,10 @@ $pip_modules="cython numpy pillow pygments pyreadline Jinja2"
 
 # Command to install the dependencies from vcpkg
 $vcpkg_deps="dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image"
-}
+
 
  # ARCHITECTURE 32/64 bit
-{
+
 ## (DEBUG) Set architecture manually
 # $is64bit=$true
 
@@ -59,6 +63,15 @@ if(!($env:OPENAGEx64) -or !($is64bit)){
     $env:OPENAGEx64=$false
     Write-Host "32bit Flag activated! Everything will be downloaded and build in 32bit/x86 architecture!"
     
+    #python-dl-arch
+    $python_dl_arch=""
+
+    #git-dl-arch
+    $git_dl_arch="-32-bit"
+
+    #cmake-dl-arch
+    $cmake_dl_arch="-win32-x86"  
+    
     #cmake
     $cmake_arch = "Win32"
 
@@ -70,6 +83,15 @@ if(!($env:OPENAGEx64) -or !($is64bit)){
     $env:OPENAGEx64=$true
     Write-Host "64bit Flag activated! Everything will be downloaded and build in 64bit/x64 architecture!"
 
+    #python-dl-arch
+    $python_dl_arch="-amd64"
+
+    #git-dl-arch
+    $git_dl_arch="-64-bit"
+
+    #cmake-dl-arch
+    $cmake_dl_arch="-win64-x64"
+
     #cmake
     $cmake_arch = "Win64"
 
@@ -77,33 +99,30 @@ if(!($env:OPENAGEx64) -or !($is64bit)){
     $vcpkg_arch="--triplet x64-windows"
 
 }
-}
 
 # cmake Visual Studio version
 $build_vs_ver = "Visual Studio 15 2017"
 
-# Python-DL
-# TODO How to automate version DL?
-$python_dl="https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe"
+# Links to binaries
+# CHANGEME: The BinPath is depending on the structure of the archive itself
+# These you have to set manually, because the folder structure in
+# extracted files will possibly change over time
 
-
-# Dependencies to be downloaded
-# GitHub-Files can be referenced with their RepoName and the Flag "isGit"
-# that will Download automatically the newest Release-Version
-# Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case for the Link generation
-$deps = @(
-    [PSCustomObject]@{Name = "cmake"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; desiredVersion=""; LatestRelease =""; RepoName = "Kitware/CMake"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "mingit"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; desiredVersion=""; LatestRelease = ""; RepoName = "git-for-windows/git"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "flex"; isGit=$true; isZip=$true; isInstaller=$false; isConfig=$false; desiredVersion=""; LatestRelease =""; RepoName = "lexxmark/winflexbison"; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "python3"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; desiredVersion=""; LatestRelease = ""; RepoName = ""; DownloadLink = $python_dl; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; desiredVersion=""; LatestRelease = ""; RepoName = ""; DownloadLink = "https://download.visualstudio.microsoft.com/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; HashFile = ""; HomeDir = ""; FileName = ""; ConfigPath=""}
-    [PSCustomObject]@{Name = "vs_buildtools\config"; LinkName="vs_buildtools"; isGit=$false; isZip=$false; isInstaller=$false; isConfig=$true; desiredVersion=""; LatestRelease = ""; RepoName = ""; DownloadLink = "https://raw.githubusercontent.com/simonsan/kevin-win-setup/stage2/vsconfig/build_tools.vsconfig"; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "nsis"; LinkName=""; isGit=$false; isZip=$false; isInstaller=$true; isConfig=$false; desiredVersion=""; LatestRelease = ""; RepoName = ""; DownloadLink = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.04/nsis-3.04-setup.exe"; HashFile = ""; HomeDir = ""; FileName = ""}
-    [PSCustomObject]@{Name = "dejavu_font"; LinkName=""; isGit=$false; isZip=$true; isInstaller=$false; isConfig=$false; desiredVersion=""; LatestRelease = ""; RepoName = ""; DownloadLink = "http://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.zip"; HashFile = ""; HomeDir = ""; FileName = ""}
-
-   # Preset New Download (Search for #ADD NEW SOFTWARE LINK GENERATION HERE and add a new case)
-   # [PSCustomObject]@{Name = ""; isGit=""; RepoName = ""; DownloadLink = ""; HashFile = ""; HomeDir = ""; FileName = ""} 
+$bin = @(
+        [PSCustomObject]@{Name="cmake"; BinDir=""; BinPath="\bin\cmake.exe"}
+        [PSCustomObject]@{Name="mingit"; BinDir=""; BinPath="\cmd\git.exe"}
+        [PSCustomObject]@{Name="flex"; BinDir=""; BinPath="\win_flex.exe"}
+        [PSCustomObject]@{Name="vcpkg"; BinDir=$vcpkg_path; BinPath="$($vcpkg_path)vcpkg.exe"}
+        [PSCustomObject]@{Name="cpack"; BinDir=""; BinPath="\bin\cpack.exe"}
+        [PSCustomObject]@{Name="nsis"; BinDir=""; BinPath="\NSIS.exe"}
+#       [PSCustomObject]@{Name="pip"; BinDir=""; BinPath=""}
+#       [PSCustomObject]@{Name="python3"; BinDir=""; BinPath=""}
 )
+
+# TODO $deps nochmal initialisieren für $_.installDir
+
+
+
 
 # VERSION CONFIGURATION OF DEPENDENCIES
 
@@ -121,28 +140,16 @@ Function WriteVersionsToFile($arr, [string]$dir, [string]$name="versions.json"){
 # Import versions from file
 # TODO Testing
 Function GetVersionsFromFile{
-    Param($dep_versions, [string]$versionfile_path)
-
-    $dep_versions = (Get-Content -Raw -Path $versionfile_path | ConvertFrom-Json)
+    Param([string]$versionfile_path)
+    
+    if($versionfile_path){
+        Write-Host "Version file will be imported from $versionfile_path"
+        return (Get-Content -Raw -Path $versionfile_path | ConvertFrom-Json)
+    }
+    
     #$deps_import | %{ DO STH }
  
 }
-
-
-# Links to binaries
-# CHANGEME: The BinPath is depending on the structure of the archive itself
-# These you have to set manually, because the folder structure in
-# extracted files will possibly change over time
-
-$bin = @(
-        [PSCustomObject]@{Name="cmake"; BinDir=""; BinPath="\bin\cmake.exe"}
-        [PSCustomObject]@{Name="mingit"; BinDir=""; BinPath="\cmd\git.exe"}
-        [PSCustomObject]@{Name="flex"; BinDir=""; BinPath="\win_flex.exe"}
-        [PSCustomObject]@{Name="vcpkg"; BinDir=$vcpkg_path; BinPath="$($vcpkg_path)vcpkg.exe"}
-        [PSCustomObject]@{Name="cpack"; BinDir=""; BinPath="\bin\cpack.exe"}
-#       [PSCustomObject]@{Name="pip"; BinDir=""; BinPath=""}
-#       [PSCustomObject]@{Name="python3"; BinDir=""; BinPath=""}
-)
 
 # Function to create folderstructure
 Function GenerateFolders($path){
@@ -155,16 +162,18 @@ Function GenerateFolders($path){
               New-Item -ItemType Directory -Path $global:foldPath
               Write-Host "$global:foldPath Folder created successfully!"
           }elseif((Test-Path $global:foldPath)){
-              Write-Host "$global:foldPath Folder already exists!"
+              # Write-Host "$global:foldPath Folder already exists!"
           }
 
           
-#elseif($DRY_RUN){
-#            Write-Host "DRYRUN: $global:foldPath folder was not created!"
-#          }
+         # elseif($DRY_RUN){
+         #        Write-Host "DRYRUN: $global:foldPath folder was not created!"
+         #}
+
     }
-    
-   return $global:foldPath    
+   
+   # Not sure if we really need that, commented out 
+   #return $global:foldPath    
 }
 
 # Create subfolder for each dependency and save in $deps
@@ -195,20 +204,36 @@ Function DownloadDependencies($arr){
             # Don't download if file already there
             if( !(Test-Path $output)){
            
-                Write-Host "Downloading $($_.Name) ..."
+                Write-Host "Downloading $($_.Name) $($_.LatestRelease) ..."
+
+                # Debug
+                Write-Host $_.DownloadLink
+                Write-Host $output
+
+
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             
                 if(($_.Name) -eq "vs_buildtools"){
 
-                     # Visual Studio 17 CE (advanced options) - Build tools
-              
-                     $job = Invoke-WebRequest -Uri $source  -OutFile $output -Headers @{"method"="GET"; "authority"="download.visualstudio.microsoft.com"; "scheme"="https"; "path"="/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; "upgrade-insecure-requests"="1"; "dnt"="1"; "user-agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"; "accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"; "referer"="https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=15"; "accept-encoding"="gzip, deflate, br"; "accept-language"="en-US,en;q=0.9"}
+                        # Visual Studio 17 CE (advanced options) - Build tools
+                        $job = Invoke-WebRequest -Uri $source  -OutFile $output -Headers @{"method"="GET"; "authority"="download.visualstudio.microsoft.com"; "scheme"="https"; "path"="/download/pr/10413969-2070-40ea-a0ca-30f10ec01d1d/414d8e358a8c44dc56cdac752576b402/vs_buildtools.exe"; "upgrade-insecure-requests"="1"; "dnt"="1"; "user-agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"; "accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"; "referer"="https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=15"; "accept-encoding"="gzip, deflate, br"; "accept-language"="en-US,en;q=0.9"}
                  
 
+                }elseif(($_.Name) -eq "nsis"){
+                    
+                        # NSIS
+                        $job = Invoke-WebRequest -Uri $source -OutFile $output -Headers @{"Upgrade-Insecure-Requests"="1"; "DNT"="1"; "User-Agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"; "Accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"; "Referer"="https://sourceforge.net/projects/nsis/files/NSIS%203/3.04/nsis-3.04-setup.exe/download?use_mirror=netix&download="; "Accept-Encoding"="gzip, deflate, br"; "Accept-Language"="en-US,en;q=0.9"; "Cookie"="eupubconsent=BOhQ8W7OhQ8W7AKASAENAAAA-AAAAA; euconsent=BOhQ8W7OhQ8W7AKASBENCU-AAAAnd7_______9______9uz_Ov_v_f__33e87_9v_l_7_-___u_-3zd4u_1vf99yfm1-7etr3tp_87ues2_Xur__59__3z3_9phPrsk89r6337A; googlepersonalization=OhQ8W7OhQ8W7gA; _cmpRepromptOptions=OhQ8W7OhQ8W7IA"}
+                
+
+                }elseif(($_.Name) -eq "dejavu_font"){
+
+                        # Dejavu-Font
+                        Invoke-WebRequest -Uri $source -OutFile $output -Headers @{"Upgrade-Insecure-Requests"="1"; "DNT"="1"; "User-Agent"="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"; "Accept"="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"; "Referer"="https://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.zip/download"; "Accept-Encoding"="gzip, deflate, br"; "Accept-Language"="en-US,en;q=0.9"; "Cookie"="eupubconsent=BOhQ8W7OhQ8W7AKASAENAAAA-AAAAA; euconsent=BOhQ8W7OhQ8W7AKASBENCU-AAAAnd7_______9______9uz_Ov_v_f__33e87_9v_l_7_-___u_-3zd4u_1vf99yfm1-7etr3tp_87ues2_Xur__59__3z3_9phPrsk89r6337A; googlepersonalization=OhQ8W7OhQ8W7gA; _cmpRepromptOptions=OhQ8W7OhQ8W7IA"}
+                       
                 }else{
-                     # Other dependencies besides VS-Buildtools.exe
-                     # But gets config-files for the vs-installer as well
-                     $job = Invoke-WebRequest -Uri $source -OutFile $output
+                        # Other dependencies without referrer
+                        # But gets config-files for the vs-installer as well
+                        $job = Invoke-WebRequest -Uri $source -OutFile $output
                                     
                 }
 
@@ -229,6 +254,7 @@ Function DownloadDependencies($arr){
 
 # Function to generate FileName and FilePath from DownloadLink
 # TODO Add generate filename for download for 32bit/64bit
+# TODO $arch should be exchangable from a flag for installing just 32bit versions
 Function GenerateFileNames($arr){
 
     Write-Host "Generating Filenames ..."
@@ -242,51 +268,62 @@ Function GenerateFileNames($arr){
     }
 }
 
-# Get the link for the latest version of a github repo
+
+# Get the link for the (latest) version of a github repo
 # Inspired by https://gist.github.com/f3l3gy/0e89dde158dde024959e36e915abf6bd
-# TODO Also download a hardcoded version
-# TODO $arch should be exchangable from a flag for installing just 32bit versions
-Function GetLatestVersionLink{
+Function GetVersionLink{
 	Param($arr, [string] $path)
-
-
-    
-    Write-Host "Get the latest version of Github-Releases ..."
+ 
 
     $arr | ForEach-Object {
 
            # Github
            if(($_.isGit) -eq $true){
+
+               if(!($_.desiredVersion)){
+
+               Write-Host "Get the latest version of Github-Releases ..."
+
                $releases = "https://api.github.com/repos/$($_.RepoName)/releases"
            
                Write-Host "Determining latest release for $($_.Name)"
                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-           
+                
                $versionRequest = ((ConvertFrom-Json -InputObject (Invoke-WebRequest -Uri  $releases -UseBasicParsing)) | Where {$_.prerelease -eq $false})[0]
 
+               $_.desiredVersion = $false
                $_.LatestRelease = $versionRequest[0].tag_name
-         
+
+                    Write-Host "The latest release of $($_.Name) is $($_.LatestRelease)."
+
+               }else{
+
+                    Write-Host "Using hardcoded version $($_.desiredVersion) of $($_.Name)..."
+                    $_.LatestRelease = $_.desiredVersion
+               }
+
                #$_.DownloadLink = ($versionRequest | Where {$_.content_type -eq "application/zip"})
            
 
                # ADD NEW SOFTWARE LINK GENERATION HERE
-               # Move Generation of $file to new function 
                # set up for architecture-flag
                # >>>
           
                if(($_.Name) -eq "mingit"){
                    #MinGit-2.21.0-64-bit.zip
+                   #MinGit-2.21.0-32-bit.zip
                    $name = "$($_.Name)-"
                    $version=($_.LatestRelease.Substring(1))
                    $version= $version.Substring(0,$version.Length-10)
-                   $arch="-64-bit"
+                   $arch=$git_dl_arch
                    $type=".zip"
 
                }elseif(($_.Name) -eq "cmake"){
                    #cmake-3.14.5-win64-x64.zip 
+                   #cmake-3.14.5-win32-x86.zip
                    $name = "$($_.Name)-"  
                    $version=$_.LatestRelease.Split("v")[1]
-                   $arch="-win64-x64"
+                   $arch=$cmake_dl_arch
                    $type=".zip"
            
                }elseif(($_.Name) -eq "flex"){
@@ -299,19 +336,11 @@ Function GetLatestVersionLink{
                
                }
 
-	       #ADD NEW SOFTWARE LINK GENERATION HERE
+	       #ADD NEW SOFTWARE LINK GENERATION FOR GITHUB HERE
                # >>> elseif() <<<
-	       
-               # TODO
-               # Here should be 
-               # $file = GenerateFileNames-Return value or so
-               # also consider python versions not just git
-               # also consider hardcoded version file
 
                $file="$name$version$arch$type"
     
-               Write-Host "The latest release of $($_.Name) is $($_.LatestRelease)."
-
                # Debug
                # Write-Host "DownloadLink for $($_.RepoName) is"
                
@@ -322,11 +351,36 @@ Function GetLatestVersionLink{
 
  
 
-          }
+          }elseif(($_.isGit) -eq $false){
 
+                $_.LatestRelease = $_.desiredVersion
+
+                if(($_.Name) -eq "python3"){
+
+                       $arch=$python_dl_arch
+                       $_.DownloadLink="https://www.python.org/ftp/python/$($_.desiredVersion)/python-$($_.desiredVersion)$($arch).exe"
+
+
+                }elseif(($_.Name) -eq "nsis"){
+
+                         # Sourceforge
+                         $_.DownloadLink="https://kent.dl.sourceforge.net/project/nsis/NSIS%203/$($_.desiredVersion)/nsis-$($_.desiredVersion)-setup.exe"
+                         
+            
+                }elseif(($_.Name) -eq "dejavu_font"){
+
+                         # Sourceforge
+                         $_.DownloadLink="https://kent.dl.sourceforge.net/project/dejavu/dejavu/$($_.desiredVersion)/dejavu-fonts-ttf-$($_.desiredVersion).zip"
+
+                }     
+
+
+         }
+     
     }
-   
+
 }
+
 
 # Extract Zip-Files and delete archives afterwards
 # Sets the HomeDir to the extracted new Folder structure
@@ -420,8 +474,13 @@ Function InstallDependencies($arr){
 
              $setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "/s /passive Include_debug=1 Include_dev=1 Include_lib=1 Include_pip=1 PrependPath=1 CompileAll=1 InstallAllUsers=1 TargetDir=$($_.HomeDir)" -Wait
              if ($setup.exitcode -eq 0){
+                # TODO Not Working
                 write-host "$($_.Name) installed succesfully."
              }
+
+              # TODO Add install-dir to object
+              # $_.InstallDir = "$($_.HomeDir)"
+
            }elseif(($_.Name) -eq "vs_buildtools"){
 
              # Installer Routine for VS Buildtools
@@ -429,17 +488,39 @@ Function InstallDependencies($arr){
              $setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "-p --addProductLang En-us --norestart --noUpdateInstaller --downloadThenInstall --force --config $($_.ConfigPath)" -Wait
 
              if ($setup.exitcode -eq 0){
+                # TODO Not Working
                 write-host "$($_.Name) installed succesfully."
              }
+
+              # TODO Add install-dir to object
+              # $_.InstallDir = "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools"
+
            }elseif(($_.Name) -eq "nsis"){
 
              # TODO Installer Routine for NSIS
              Write-Host "Installing $($_.Name), this can take a longer time. Do not close this window!"
-             #$setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "/s" -Wait
-
+             $setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "/S /D=$($_.HomeDir)$($_.Name)-$($_.LatestRelease)\" -Wait
+             
              if ($setup.exitcode -eq 0){
+                # TODO Not Working
                 write-host "$($_.Name) installed succesfully."
              }
+            
+             # TODO Add install-dir to object
+             # Set InstallDir to directory of install for later use for $bin and $PATH
+             # $_.InstallDir = "$($_.HomeDir)$($_.Name)-$($_.LatestRelease)"
+         
+           }elseif(($_.Name) -eq "dejavu_font"){
+
+             # TODO Installer Routine for dejavu_font
+             Write-Host "Installing $($_.Name), this can take a longer time. Do not close this window!"
+             #$setup = Start-Process "$($_.HomeDir)$($_.FileName)" -ArgumentList "/S /D=$($_.HomeDir)$($_.Name)-$($_.LatestRelease)\" -Wait
+             
+             if ($setup.exitcode -eq 0){
+                # TODO Not Working
+                write-host "$($_.Name) installed succesfully."
+             }
+
            }
 
          }
@@ -545,13 +626,15 @@ Function VcpkgBin([string]$cmd ="/help",[string]$software=""){
 
 ## Main
 
+# Import from version file
+$deps = GetVersionsFromFile $version_file
 
 # Create Directory for dependency downloads
 GenerateDepFolders -arr $deps -path $dependency_dl_path
 
 # Get Latest from Github
 # TODO Take versions from savefile (json)
-GetLatestVersionLink -arr $deps -path ""
+GetVersionLink -arr $deps -path ""
 
 # Generate FileNames from Link
 GenerateFileNames $deps
@@ -572,24 +655,26 @@ ExtractDependencies -arr $deps -path $dependency_dl_path
 ConnectConfigs $deps
 
 # Write Versions to file
-# $deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)recent.json"
+#$deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)recent.json"
 
 
 # Install Dependencies
 # TODO Should test for already installed dependencies first
 # otherwise jump over them or even remove possible conflict files
-# InstallDependencies $deps
+InstallDependencies $deps
 
 # Get Links to Binaries
 GetBinaryLinks $bin
 
+$deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)recent.json"
+
 # Install Python pip modules
-#$pip = & Start-Process -FilePath "pip" -ArgumentList "install $($pip_modules)" -Wait
+$pip = & Start-Process -FilePath "pip" -ArgumentList "install $($pip_modules)" -Wait
 
 
 ### Till here everything works out somewhat nicely
 #
-# Installed: Python 3.7.3, VS build tools
+# Installed: Python 3.7.3, VS build tools, NSIS
 # Downloaded and extracted: cmake, (min)git, flex 
 # Python should be in PATH from here (from python installer)
 #
@@ -601,11 +686,6 @@ GetBinaryLinks $bin
 
 
 # Clone vcpkg
-# TODO Test if vcpkg is already there
-# Fetch newer commits
-# Checkout latest stable
-# Recompile latest stable
-# Do not hardcode vcpkg path in $bin-array/hashtable
 Write-Host "Please wait, while we are cloning vcpkg ..."
 GitBin -address "https://github.com/Microsoft/vcpkg.git" -action "clone" -path $vcpkg_path
 
@@ -615,19 +695,19 @@ Write-Host "Please wait, while we are compiling vcpkg ..."
 # DEBUG/TODO Do not rebuild everytime
 # Check with hash-file against hash of vcpkg.exe
 # and if vcpkg.exe is already there unchanged
-# $bat = & "$($vcpkg_path)scripts\bootstrap.ps1"
+$bat = & "$($vcpkg_path)scripts\bootstrap.ps1"
 
 # Get Hash of vcpkg.exe for $bin_hashes
 # Get-FileHash -Path <Path> -Algorithm SHA512
 
 # Integrating vcpkg in OS
-# VcpkgBin -cmd "integrate install"
+VcpkgBin -cmd "integrate install"
 
 # Builds defined packages for the defined architecture 
-# VcpkgBin -cmd "install" -software $vcpkg_deps
+VcpkgBin -cmd "install" -software $vcpkg_deps
 
 ### Till here everything works out somewhat nicely
-# Installed: Python 3.7.3, VS build tools
+# Installed: Python 3.7.3, VS build tools, NSIS
 # Downloaded and extracted: cmake, (min)git, flex 
 # Python should be in PATH from here (from python installer)
 # cmake, git, flex, vcpkg should be in env:Path
@@ -637,26 +717,15 @@ Write-Host "Please wait, while we are compiling vcpkg ..."
 ###
 
 # Clone openage
-#Write-Host "Please wait, while we are cloning openage ..."
+Write-Host "Please wait, while we are cloning openage ..."
 $openage_src_dir=GitBin -address "https://github.com/SFTtech/openage.git" -action "clone" -path "$($dependency_dl_path)openage"
 
 
 # Saving binary paths to easily restore current status
-$bin | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)binaries.json"
-
+#$bin | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)binaries.json"
 
 # Ready
 Write-Host "Here we are ready for cmake configuring and the environment should be set up."
-
-
-# Create build dir depending on building architecture
-$build_dir_arch="$($build_dir)$($cmake_arch)"
-GenerateFolders $build_dir_arch
-Set-Location $build_dir_arch
-
-# cmake Commands
-$vcpkg_toolchain ="-DCMAKE_TOOLCHAIN_FILE=$($vcpkg_path)/scripts/buildsystems/vcpkg.cmake"
-$build_flag="-G $($vs_ver) $($cmake_arch)"
 
 
 ####
@@ -667,8 +736,17 @@ $build_flag="-G $($vs_ver) $($cmake_arch)"
 #
 ####
 
+# Create build dir depending on building architecture
+$build_dir_arch="$($build_dir)$($cmake_arch)"
+GenerateFolders $build_dir_arch
+Set-Location $build_dir_arch
 
-# $job = & Start-Process -FilePath "cmake" -ArgumentList "$($vcpkg_toolchain) $($build_flag) $($openage_src_dir)" -Wait
+# cmake Commands
+#$vcpkg_toolchain ="-DCMAKE_TOOLCHAIN_FILE=$($vcpkg_path)/scripts/buildsystems/vcpkg.cmake"
+#$build_flag="-G $($vs_ver) $($cmake_arch)"
+
+
+#$job = & Start-Process -FilePath "cmake" -ArgumentList "$($vcpkg_toolchain) $($build_flag) $($openage_src_dir)" -Wait
 
 # Set-Location $build_dir
 # $job = & Start-Process -FilePath "cmake" -ArgumentList "--build . --config RelWithDebInfo -- /nologo /m /v:m" -Wait
@@ -698,12 +776,39 @@ $build_flag="-G $($vs_ver) $($cmake_arch)"
 
 # Cleanup
 # CleanUp $deps
+# Cleanup environment variables for bin-paths
 
 
 # Notes
 
 # Import BITS for file transfers
 # Import-Module BitsTransfer
+
+# OTHER CMAKE DEPENDENCIES
+# BZRCOMMAND-NOTFOUND
+# CMAKE_MT-NOTFOUND
+# COVERAGE_COMMAND-NOTFOUND
+# CVSCOMMAND-NOTFOUND 
+# DOXYGEN_DOT_EXECUTABLE-NOTFOUND
+# DOXYGEN_EXECUTABLE-NOTFOUND
+# GITCOMMAND-NOTFOUND
+# HGCOMMAND-NOTFOUND
+# MEMORYCHECK_COMMAND-NOTFOUND
+# P4COMMAND-NOTFOUND
+# PKG_CONFIG_EXECUTABLE-NOTFOUND
+# SLURM_SBATCH_COMMAND-NOTFOUND
+# SLURM_SRUN_COMMAND-NOTFOUND
+# SVNCOMMAND-NOTFOUND
+# _VCPKG_CL-NOTFOUND
+# OGG_LIB-NOTFOUND
+
+
+# TODO Test if vcpkg is already there
+# Fetch newer commits
+# Checkout latest stable
+# Recompile latest stable
+# Do not hardcode vcpkg path in $bin-array/hashtable
+
 
 
 # TODO
