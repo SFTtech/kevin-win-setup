@@ -1,9 +1,7 @@
 ﻿# Copyright 2019 the openage authors. See LICENSE for legal info.
-# Licensed under GNU General Public License v3.0
+# Licensed under GNU Affero General Public License v3.0
 
-
-# Flag for DRY RUN -> TODO
-# $DRY_RUN=false;
+$progress = "dependencies"
 
 # IMPORTANT NOTE!
 # Need to set the following command manually, to run this script on a standard Win10 machine
@@ -11,14 +9,13 @@
 # for the current powershell process
 # >>> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 
-# PLEASE SEARCH FOR "CHANGEME" IN THIS SCRIPT AND ADJUST THE VALUES TO YOUR LIKING! 
+# SEARCH FOR "CHANGEME" IN THIS SCRIPT AND ADJUST THE VALUES TO YOUR LIKING! 
 
 # CHANGEME: IMPORTANT STANDARD PATHS 
-
 ## Path to the file with all the dependencies and versions
 ## You could also set the $OPENAGE_VF environment variable to the version file you like
-#$version_file=$env:OPENAGE_VF
-$version_file="C:\Users\Jameson\Documents\git-projects\kevin-win-setup\dep-configs\stable.json"
+# $version_file=$env:OPENAGE_VF
+# $version_file=<path-to-version-file>
 
 ## Change to preferred download path
 $dependency_dl_path="$env:HOMEDRIVE\openage-dl\";
@@ -35,15 +32,12 @@ $pip_modules="cython numpy pillow pygments pyreadline Jinja2"
 # Command to install the dependencies from vcpkg
 $vcpkg_deps="dirent eigen3 fontconfig freetype harfbuzz libepoxy libogg libpng opus opusfile qt5-base qt5-declarative qt5-quickcontrols sdl2 sdl2-image"
 
-
- # ARCHITECTURE 32/64 bit
-
+# ARCHITECTURE 32/64 bit
 ## (DEBUG) Set architecture manually
-# $is64bit=$true
+$is64bit=$true
 
 # CHANGEME: Set the environment variable on your system $env:OPENAGEx64 
 # to either TRUE (for 64bit builds) or FALSE (for 32bit builds)
-
 
 # Deal with vcpkg standard triplet for 64bit compilation
 if($($env:VCPKG_DEFAULT_TRIPLET) -eq "x64-windows"){
@@ -54,7 +48,6 @@ if($($env:VCPKG_DEFAULT_TRIPLET) -eq "x64-windows"){
     # Unset this variable as we have one only for openage-x64
     Remove-Item -Path env:VCPKG_DEFAULT_TRIPLET
 }
-
 
 ## Set architecture with environment variables
 ## Standard ist 64-bit
@@ -98,6 +91,10 @@ if(!($env:OPENAGEx64) -or !($is64bit)){
     #vcpkg
     $vcpkg_arch="--triplet x64-windows"
 
+    #relevant config
+    $relevant_config_oa="x64-windows"
+
+
 }
 
 # cmake Visual Studio version
@@ -119,27 +116,21 @@ $bin = @(
 #       [PSCustomObject]@{Name="python3"; BinDir=""; BinPath=""}
 )
 
-# TODO $deps nochmal initialisieren für $_.installDir
-
-
-
-
-# VERSION CONFIGURATION OF DEPENDENCIES
+## VERSION CONFIGURATION OF DEPENDENCIES
 
 # Write version file
-Function WriteVersionsToFile($arr, [string]$dir, [string]$name="versions.json"){
+Function WriteVersionsToFile($arr, [string]$dir, [string]$filename="versions.json"){
     
     # GenerateFolders
-    $dir_created = GenerateFolders $dir
+    GenerateFolders $dir
 
     # Write FileOut
-    #$arr | ConvertTo-Json -depth 100 | Out-File "$($dir_created)$name"
-
+    $arr | ConvertTo-Json -depth 100 | Out-File "$($dir)$($filename)"
+    
 }
 
 # Import versions from file
-# TODO Testing
-Function GetVersionsFromFile{
+Function GetFromFile{
     Param([string]$versionfile_path)
     
     if($versionfile_path){
@@ -147,8 +138,6 @@ Function GetVersionsFromFile{
         return (Get-Content -Raw -Path $versionfile_path | ConvertFrom-Json)
     }
     
-    #$deps_import | %{ DO STH }
- 
 }
 
 # Function to create folderstructure
@@ -188,7 +177,6 @@ Function GenerateDepFolders{
 }
 
 # Function to download dependency setups
-# TODO Do not redownload already extracted deps
 Function DownloadDependencies($arr){
 
      Write-Host "Downloading dependencies ..."
@@ -253,8 +241,6 @@ Function DownloadDependencies($arr){
 }
 
 # Function to generate FileName and FilePath from DownloadLink
-# TODO Add generate filename for download for 32bit/64bit
-# TODO $arch should be exchangable from a flag for installing just 32bit versions
 Function GenerateFileNames($arr){
 
     Write-Host "Generating Filenames ..."
@@ -267,7 +253,6 @@ Function GenerateFileNames($arr){
            #Write-Host $_.FileName
     }
 }
-
 
 # Get the link for the (latest) version of a github repo
 # Inspired by https://gist.github.com/f3l3gy/0e89dde158dde024959e36e915abf6bd
@@ -459,7 +444,6 @@ Function ConnectConfigs($arr){
  }
  
 # Install the dependencies
-# TODO Testing
 Function InstallDependencies($arr){
 
 
@@ -541,7 +525,7 @@ Function GetBinaryLinks($arr){
                
                $name_temp = $_.Name
                
-               # Set "cpack" as "cmake" for same directory
+               # HACK: Set "cpack" as "cmake" for same directory
                if($($_.Name) -eq "cpack"){
                 $name_temp = "cmake"
                }
@@ -580,8 +564,8 @@ Function SetEnvPathFromFile{
 
     if(!($is_in_path)){
         # Debug
-        #Write-Host "Write directory $($file_dir) to $($var)."
-        Set-Item -path env:Path -value "$($env:Path);$($file_dir)"
+        Write-Host "Write directory $($file_dir) to $($env:Path)."
+        #Set-Item -path env:Path -value "$($env:Path);$($file_dir)"
     }
 
 }
@@ -623,185 +607,136 @@ Function VcpkgBin([string]$cmd ="/help",[string]$software=""){
 
 }
 
+# Cmake imitating
+Function CmakeBin([string]$cmd ="/help",[string]$src_dir="",[string]$build_dir=""){
+
+   
+    # cmake Binary
+    $cmake = ($bin | Where {$($_.Name) -eq $("cmake")} | Select BinPath)
+
+      
+      #Jump to build directory
+      Set-Location $build_dir
+
+      # Call cmake
+      #$job = & Start-Process -FilePath $cmake.BinPath -ArgumentList "$($cmd) $($src_dir)" -Wait
+
+      # DEBUG
+      Write-Host "Please manually call the command: $($cmake.BinPath) $($cmd) $($src_dir)"
+
+
+}
 
 ## Main
+if($progress -eq "dependencies"){
 
-# Import from version file
-$deps = GetVersionsFromFile $version_file
+        # Import from version file
+        $deps = GetFromFile $version_file
 
-# Create Directory for dependency downloads
-GenerateDepFolders -arr $deps -path $dependency_dl_path
+        # Create Directory for dependency downloads
+        GenerateDepFolders -arr $deps -path $dependency_dl_path
 
-# Get Latest from Github
-# TODO Take versions from savefile (json)
-GetVersionLink -arr $deps -path ""
+        # Get Latest from Github
+        GetVersionLink -arr $deps -path ""
 
-# Generate FileNames from Link
-GenerateFileNames $deps
+        # Generate FileNames from Link
+        GenerateFileNames $deps
 
-# Download all Dependencies
-# TODO changes to $deps should be done before/after, that we
-# can spare out downloading process by flag
-DownloadDependencies $deps
+        # Download all Dependencies
+        # TODO changes to $deps should be done before/after, that we
+        # can spare out downloading process by flag
+        DownloadDependencies $deps
 
-# Extract Dependencies
-# TODO changes to $deps should be done before/after, that we
-# can spare out extraction process by flag
-ExtractDependencies -arr $deps -path $dependency_dl_path
+        # Extract Dependencies
+        # TODO changes to $deps should be done before/after, that we
+        # can spare out extraction process by flag
+        ExtractDependencies -arr $deps -path $dependency_dl_path
 
-# Link config files
-# TODO This should be called in dependency of existing 
-# config-files not every time
-ConnectConfigs $deps
+        # Link config files
+        # TODO This should be called in dependency of existing 
+        # config-files not every time
+        ConnectConfigs $deps
 
-# Write Versions to file
-#$deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)recent.json"
+        # Install Dependencies
+        # TODO Should test for already installed dependencies first
+        # otherwise jump over them or even remove possible conflict files
+        InstallDependencies $deps
 
+        # Get Links to Binaries
+        GetBinaryLinks $bin
 
-# Install Dependencies
-# TODO Should test for already installed dependencies first
-# otherwise jump over them or even remove possible conflict files
-InstallDependencies $deps
-
-# Get Links to Binaries
-GetBinaryLinks $bin
-
-$deps | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)recent.json"
-
-# Install Python pip modules
-$pip = & Start-Process -FilePath "pip" -ArgumentList "install $($pip_modules)" -Wait
+        # Install Python pip modules
+        Write-Host "Please wait, while we are installing Python modules ..."
+        $pip = & Start-Process -FilePath "pip" -ArgumentList "install $($pip_modules)" -Wait
 
 
-### Till here everything works out somewhat nicely
-#
-# Installed: Python 3.7.3, VS build tools, NSIS
-# Downloaded and extracted: cmake, (min)git, flex 
-# Python should be in PATH from here (from python installer)
-#
-# NEW: cmake, git, flex, vcpkg should be in env:Path
-#
-# NEW: pip modules should be installed
-#
-###
+        ### Till here everything works out somewhat nicely
+        #
+        # Installed: Python 3.7.3, VS build tools, NSIS
+        # Downloaded and extracted: cmake, (min)git, flex 
+        # Python should be in PATH from here (from python installer)
+        #
+        # NEW: cmake, git, flex, vcpkg should be in env:Path
+        #
+        # NEW: pip modules should be installed
+        #
+        ###
 
 
-# Clone vcpkg
-Write-Host "Please wait, while we are cloning vcpkg ..."
-GitBin -address "https://github.com/Microsoft/vcpkg.git" -action "clone" -path $vcpkg_path
+        # Clone vcpkg
+        Write-Host "Please wait, while we are cloning vcpkg ..."
+        GitBin -address "https://github.com/Microsoft/vcpkg.git" -action "clone" -path $vcpkg_path
 
-# Set-Location -Path "$($dependency_dl_path)vcpkg"
-Write-Host "Please wait, while we are compiling vcpkg ..."
+        # Set-Location -Path "$($dependency_dl_path)vcpkg"
+        Write-Host "Please wait, while we are compiling vcpkg ..."
 
-# DEBUG/TODO Do not rebuild everytime
-# Check with hash-file against hash of vcpkg.exe
-# and if vcpkg.exe is already there unchanged
-$bat = & "$($vcpkg_path)scripts\bootstrap.ps1"
+        # DEBUG/TODO Do not rebuild everytime
+        # Check with hash-file against hash of vcpkg.exe
+        # and if vcpkg.exe is already there unchanged
+        $bat = & "$($vcpkg_path)scripts\bootstrap.ps1"
 
-# Get Hash of vcpkg.exe for $bin_hashes
-# Get-FileHash -Path <Path> -Algorithm SHA512
+        # Get Hash of vcpkg.exe for $bin_hashes
+        # Get-FileHash -Path <Path> -Algorithm SHA512
 
-# Integrating vcpkg in OS
-VcpkgBin -cmd "integrate install"
+        # Integrating vcpkg in OS
+        $job = & VcpkgBin -cmd "integrate install"
 
-# Builds defined packages for the defined architecture 
-VcpkgBin -cmd "install" -software $vcpkg_deps
+        # Builds defined packages for the defined architecture
+        # TODO Come back to terminal after compiling!
+        $job = & VcpkgBin -cmd "install" -software $vcpkg_deps
 
-### Till here everything works out somewhat nicely
-# Installed: Python 3.7.3, VS build tools, NSIS
-# Downloaded and extracted: cmake, (min)git, flex 
-# Python should be in PATH from here (from python installer)
-# cmake, git, flex, vcpkg should be in env:Path
-#
-# NEW: all the Vcpkg-Packages should be built in $arch-Version
-#
-###
+        ### 
+        #
+        # Till here everything works out somewhat nicely
+        # Installed: Python 3.7.3, VS build tools, NSIS
+        # Downloaded and extracted: cmake, (min)git, flex 
+        # Python should be in PATH from here (from python installer)
+        # cmake, git, flex, vcpkg should be in env:Path
+        #
+        # NEW: all the Vcpkg-Packages should be built in $arch-Version
+        #
+        ###
 
-# Clone openage
-Write-Host "Please wait, while we are cloning openage ..."
-$openage_src_dir=GitBin -address "https://github.com/SFTtech/openage.git" -action "clone" -path "$($dependency_dl_path)openage"
+        # Saving binary paths and dependencies
+        WriteToFile -arr $bin -dir $($dependency_dl_path) -filename "binaries.json"
+        WriteToFile -arr $deps -dir $($dependency_dl_path) -filename "recent-deps.json"
 
+        # Next step is compilation, save the progress we made here
+        $progress = "compile"
 
-# Saving binary paths to easily restore current status
-#$bin | ConvertTo-Json -depth 100 | Out-File "$($dependency_dl_path)binaries.json"
+        # Ready
+        Write-Host "Here we the environment should be set up. Ready for Kevin cloning our openage-Repository."
 
-# Ready
-Write-Host "Here we are ready for cmake configuring and the environment should be set up."
+}
 
+# Flag for DRY RUN -> TODO
+# $DRY_RUN=false;
 
-####
-#
-#
-# Building of openage could start from now on
-# TODO Check to clean the Build-Dir before making new build
-#
-####
+# TODO Do not redownload already extracted deps
 
-# Create build dir depending on building architecture
-$build_dir_arch="$($build_dir)$($cmake_arch)"
-GenerateFolders $build_dir_arch
-Set-Location $build_dir_arch
-
-# cmake Commands
-#$vcpkg_toolchain ="-DCMAKE_TOOLCHAIN_FILE=$($vcpkg_path)/scripts/buildsystems/vcpkg.cmake"
-#$build_flag="-G $($vs_ver) $($cmake_arch)"
-
-
-#$job = & Start-Process -FilePath "cmake" -ArgumentList "$($vcpkg_toolchain) $($build_flag) $($openage_src_dir)" -Wait
-
-# Set-Location $build_dir
-# $job = & Start-Process -FilePath "cmake" -ArgumentList "--build . --config RelWithDebInfo -- /nologo /m /v:m" -Wait
-
-
-# Install the DejaVu Book Font.
- # Download and extract the latest dejavu-fonts-ttf tarball/zip file.
- # Copy ttf/DejaVuSerif*.ttf font files to %WINDIR%/Fonts.
-# Set the FONTCONFIG_PATH environment variable to <vcpkg directory>\installed\<relevant config>\tools\fontconfig\fonts\.
- # Copy fontconfig/57-dejavu-serif.conf to %FONTCONFIG_PATH%/conf.d.
-# [Optional] Set the AGE2DIR environment variable to the AoE 2 installation directory.
-# Set QML2_IMPORT_PATH to <vcpkg directory>\installed\<relevant config>\qml
-# Append the following to the environment PATH:
-# <openage directory>\build\libopenage\<config built> (for openage.dll)
-# Path to nyan.dll (depends on the procedure chosen to get nyan)
-# <vcpkg directory>\installed\<relevant config>\bin
-# <QT5 directory>\bin (if prebuilt QT5 was installed)
-
-
-# Stage3.ps1 could be called from here on I guess
-# we could also pass the binary paths if we need to
-# then we should use the Start-Process -FilePath powershell -ArgumentList $stage3_path -Wait
-# syntax instead of the batch-syntax hier
-# $stage3 = & "stage3.ps1"
-
-
-
-# Cleanup
-# CleanUp $deps
-# Cleanup environment variables for bin-paths
-
-
-# Notes
-
-# Import BITS for file transfers
-# Import-Module BitsTransfer
-
-# OTHER CMAKE DEPENDENCIES
-# BZRCOMMAND-NOTFOUND
-# CMAKE_MT-NOTFOUND
-# COVERAGE_COMMAND-NOTFOUND
-# CVSCOMMAND-NOTFOUND 
-# DOXYGEN_DOT_EXECUTABLE-NOTFOUND
-# DOXYGEN_EXECUTABLE-NOTFOUND
-# GITCOMMAND-NOTFOUND
-# HGCOMMAND-NOTFOUND
-# MEMORYCHECK_COMMAND-NOTFOUND
-# P4COMMAND-NOTFOUND
-# PKG_CONFIG_EXECUTABLE-NOTFOUND
-# SLURM_SBATCH_COMMAND-NOTFOUND
-# SLURM_SRUN_COMMAND-NOTFOUND
-# SVNCOMMAND-NOTFOUND
-# _VCPKG_CL-NOTFOUND
-# OGG_LIB-NOTFOUND
-
+# TODO $deps nochmal initialisieren für $_.installDir
+## TODO: TEST NOT WORKING COMPLETELY
+# ENV? Problem?
 
 # TODO Test if vcpkg is already there
 # Fetch newer commits
@@ -809,19 +744,16 @@ Set-Location $build_dir_arch
 # Recompile latest stable
 # Do not hardcode vcpkg path in $bin-array/hashtable
 
-
+# Fast notes:
+# installer should be passive (check) 
+# but you should see that there is an installtion process of another program running
+# but the software should get installed without any klicks -> stuff even possible?
+# how do we get admin-rights for this setups
 
 # TODO
 # Save progress inside the script to return after being interrupted
 # Implement errors/exception checks
 # Make os-snapshots in between to secure state?
-
-# Set Environment variables
-# 
-## Think we don't want to work with that variable, as we rather want a per command setting not a systemwide setting for vcpkg
-## otherwise we need to remember it for cleanup
-#
-# Buildtools: C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools
 
 # ERROR array
 # take one array to collect all the errors/warnings over the script
@@ -838,35 +770,6 @@ Set-Location $build_dir_arch
 # Function to make hash of every bin and save it in $hash --> json
 # Function should check for integrity of binaries
 
-
 # Alternative to Invoke-Webrequest
 # Start-BitsTransfer -Source $_.HashFile -Destination $_.HomeDir -Asynchronous
 # Start-BitsTransfer -Source $_.DownloadLink -Destination $_.HomeDir -Asynchronous -DisplayName "Downloading $_.Name ..." 
-
-
-# IDEA Move out everything which could be an extra configuration of openage building
-# e.g. 32bit MSVC 2019 or 64bit MSVC 2017
-# a bit like a "Desired State Configuration" for dependencies
-# DSC-stable.json should have one big configuration of
-# Array/Hash-Table->$dep
-# Folder-Configs
-# Architecture
-# Compiler version
-# standard/binary paths with BinDir = $dep_dl_path + $binary_name
-
-# IDEA Menu
-# 1. Auto-Toolchain (Complete)
-# 2. Install from version-file (*.json)
-# 3. Compile openage
-# 4. Pack&Ship openage
-# 5. Cleanup dev environment (Purge)
-# 6. Exit
-
-# IDEA CLI
-# --help, -h --> this help
-# --auto-all, -a --> Go through complete toolchain and install/update as needed
-# --config <File-Path.json> -> Version-File for Software
-# --version, -v --> this script version
-# --compile <Path to openage.git> 
-# --output <Path to build-dir> or <dir> regarding your command   
-# --cleanup
