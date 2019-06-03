@@ -4,14 +4,14 @@ driver_url=https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/arch
 
 # Microsoft VM settings
 vm_url=https://az792536.vo.msecnd.net/vms/VMBuild_20171019/VirtualBox/MSEdge/MSEdge.Win10.VirtualBox.zip
-initial_pw="Passw0rd!"  # default password of the VM
+initial_pw=Passw0rd!  # default password of the VM
 port=22022  # host binding port for SSH to VM
 
 
 # Configuration to be applied to the VM
-hostname="win10"
-username="chantal"
-password="Passw0rd!"  # you probably want to override this...
+hostname=win10
+username=chantal
+password=Passw0rd!  # you probably want to override this...
 
 
 # Shorthands
@@ -38,6 +38,7 @@ $(privkey) $(pubkey):
 $d:
 	mkdir $@
 
+.PHONY: $d/virtio.iso
 $d/virtio.iso:
 	# Google for RedHat Windows virtio drivers
 	wget -c -O $@ $(driver_url)
