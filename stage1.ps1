@@ -1,7 +1,9 @@
 ﻿param(
     [String]$Hostname = "win10",
     [String]$Username = "chantal",
-    [String]$Password = "Passw0rd!"
+    [String]$Password = "wololo",
+    [Int]$ResX = 1920,
+    [Int]$ResY = 1080
 )
 
 $ScriptDir = Split-Path $MyInvocation.InvocationName
@@ -57,6 +59,22 @@ Get-Disk | ?{ $_.PartitionStyle -eq "RAW" } | `
     Initialize-Disk -PartitionStyle MBR -PassThru | `
     New-Partition -AssignDriveLetter -UseMaximumSize | `
     Format-Volume -FileSystem NTFS -NewFileSystemLabel "dummy" -Confirm:$false | Out-Null
+
+# Display resolution
+Write-Host "Setting display resolution to ${ResX}x${ResY}."
+Push-Location "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Configuration\MSBDD_NOEDID_1234_1111_00000000_00010000_0^FD62006E2425EAA7C207AF2974F7309B\00"
+Set-ItemProperty -Path .  -Name PrimSurfSize.cx   -Value $ResX
+Set-ItemProperty -Path .  -Name PrimSurfSize.cy   -Value $ResY
+Set-ItemProperty -Path .  -Name Stride            -Value $(4 * $ResX)
+Set-ItemProperty -Path 00 -Name PrimSurfSize.cx   -Value $ResX
+Set-ItemProperty -Path 00 -Name PrimSurfSize.cy   -Value $ResY
+Set-ItemProperty -Path 00 -Name Stride            -Value $(4 * $ResX)
+Set-ItemProperty -Path 00 -Name ActiveSize.cx     -Value $ResX
+Set-ItemProperty -Path 00 -Name ActiveSize.cy     -Value $ResY
+Set-ItemProperty -Path 00 -Name DwmClipBox.right  -Value $ResX
+Set-ItemProperty -Path 00 -Name DwmClipBox.bottom -Value $ResY
+Set-ItemProperty -Path 00 -Name Flags             -Value 0x830f8f
+Pop-Location
 
 # Hostname
 Write-Host "Changing hostname to '${Hostname}'."

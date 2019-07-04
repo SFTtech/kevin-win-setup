@@ -102,7 +102,7 @@ vm-stage1: | $d/virtio.iso $t/vm_default_host_key.pub $(pubkey) $(privkey) win10
 	while ! sshpass -p '$(initial_pw)' ssh -p $(port) -o UserKnownHostsFile=$t/known_host -o ConnectTimeout=1 IEUser@localhost 'echo "   Machine is up"' 2> /dev/null; do echo -n "."; sleep 1; done
 	sshpass -p '$(initial_pw)' ssh -p $(port) -o UserKnownHostsFile=$t/known_host IEUser@localhost 'mkdir -p /cygdrive/c/stage1'
 	sshpass -p '$(initial_pw)' scp -P $(port) -o UserKnownHostsFile=$t/known_host stage1.ps1 $(pubkey) $(privkey) IEUser@localhost:/cygdrive/c/stage1
-	sshpass -p '$(initial_pw)' ssh -p $(port) -o UserKnownHostsFile=$t/known_host IEUser@localhost 'powershell C:\\stage1\\stage1.ps1 -Hostname $(hostname) -Username $(username) -Password $(password)'
+	sshpass -p '$(initial_pw)' ssh -p $(port) -o UserKnownHostsFile=$t/known_host IEUser@localhost 'powershell C:\\stage1\\stage1.ps1 -Hostname $(hostname) -Username $(username) -Password $(password) -ResX 1920 -ResY 1080'
 	fg
 	touch $@
 
