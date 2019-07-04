@@ -40,6 +40,12 @@ Remove-Item ssh_host*
 Copy-Item "${ScriptDir}\ssh_host_*" .
 Pop-Location
 
+# Firewall
+Write-Host "Setting up RDP access."
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
+Enable-NetFirewallRule -Name RemoteDesktop-UserMode-In-UDP
+Enable-NetFirewallRule -Name RemoteDesktop-UserMode-In-TCP
+
 # Install virtio storage driver
 Write-Host "Installing virtio storage drivers."
 # Thanks to https://stackoverflow.com/questions/36775331/extract-certificate-from-sys-file

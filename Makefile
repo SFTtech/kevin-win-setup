@@ -8,6 +8,7 @@ vm_url=https://az792536.vo.msecnd.net/vms/VMBuild_20171019/VirtualBox/MSEdge/MSE
 initial_pw=Passw0rd!
 # host binding port for SSH to VM
 port=22022
+rdpport=3389
 
 
 # Configuration to be applied to the VM
@@ -117,7 +118,6 @@ cleanvm:
 
 # This will install cmake, git, MSVC, vcpkg, python and all the other stuff.
 # Since this is project specific, we should have this in a script.
-# We don't touch vm-stage2 to just use this as a run target right now.
 .ONESHELL: vm-stage2
 vm-stage2: vm-stage1 | win10.qcow2 $(pubkey) $t qemu-system-x86_64
 	set -m
@@ -130,6 +130,17 @@ vm-stage2: vm-stage1 | win10.qcow2 $(pubkey) $t qemu-system-x86_64
 	-vga std -display sdl &
 	fg
 	touch $@
+
+
+run-headless: vm-stage1 | win10.qcow2 $(pubkey) $t qemu-system-x86_64
+	qemu-system-x86_64 \
+	-drive file=win10.qcow2,if=virtio \
+	-machine type=q35,accel=kvm \
+	-m 8G -smp cores=2,threads=1 \
+	-vga std -display none -net nic -net user,\
+	hostfwd=tcp::$(port)-:22,\
+	hostfwd=tcp::$(rdpport)-:3389,\
+	hostfwd=udp::$(rdpport)-:3389
 
 
 .PHONY: run
