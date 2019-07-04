@@ -59,9 +59,11 @@ $d/win10.zip: | $d wget
 
 $d/win10.ova: $d/win10.zip
 	unzip -p $^ > $@
+	rm $^
 
 $d/win10.vmdk: $d/win10.ova
 	tar xOf $^ "MSEdge - Win10-disk001.vmdk" > $@
+	rm $^
 
 
 # converted image
@@ -135,4 +137,4 @@ run: vm-stage2
 
 .INTERMEDIATE: $d/win10.zip $d/win10.ova $d/win10.vmdk $d/virtio.iso $t/helper.qcow2 $t/vm_default_host_key.pub $t/known_host
 
-.PRECIOUS: $d/win10.vmdk $d/virtio.iso
+.PRECIOUS: $d/win10.zip $d/win10.ova $d/win10.vmdk $d/virtio.iso
