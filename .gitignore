@@ -1,7 +1,7 @@
 # Build outputs
 ssh_host*
 sshpass
-stage?-complete
+vm-stage?
 downloaded
 temporary
 *.qcow2
