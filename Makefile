@@ -24,8 +24,10 @@ pubkey=$(privkey).pub
 
 
 # Test for dependencies. Not sure if this is the right way to handle them.
-.PHONY: sshpass 7z wget qemu-img qemu-system-x86_64
+.PHONY: sshpass unzip 7z wget qemu-img qemu-system-x86_64
 sshpass:
+	@which $@ > /dev/null || bash -c 'echo "$@ not found, please install it" && false'
+unzip:
 	@which $@ > /dev/null || bash -c 'echo "$@ not found, please install it" && false'
 7z:
 	@which $@ > /dev/null || bash -c 'echo "$@ not found, please install it" && false'
@@ -57,7 +59,7 @@ $d/win10.zip: | $d wget
 	# New URLS to be found at modern.ie
 	wget -c -O $@ $(vm_url)
 
-$d/win10.ova: $d/win10.zip
+$d/win10.ova: $d/win10.zip | unzip
 	unzip -p $^ > $@
 	rm $^
 
